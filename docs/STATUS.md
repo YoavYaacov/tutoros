@@ -1,45 +1,46 @@
 # TutorOS — Status
 
 עודכן לאחרונה: 26/08/2026
-Phase נוכחי: Phase 1 הושלם ✅ | ממתין להתחלת Phase 2 (ניהול ליבה)
+Phase נוכחי: Phase 2a הושלם ✅ | ממתין להתחלת Phase 2b (Lessons + Dashboard + השלמת פרופילים)
 
 ## הושלם ✅
 
-### Phase 0 — Foundation
-(ראה היסטוריה קודמת — ללא שינוי)
+### Phase 0 — Foundation (ללא שינוי, ראו היסטוריה קודמת)
 
-### Phase 1 — DB Schema
-- כל 10 הטבלאות נוצרו בפועל ב-Supabase (`tmrghziqmhrrtyabfhee`) דרך migrations:
-  `families, students, pricing_agreements, lessons, charges, charge_items, payments, payment_allocations, lesson_boards, student_files`
-- FKs, CHECK constraints, indexes — לפי `docs/MASTER.md` סעיף 15
-- `updated_at` trigger אוטומטי בכל טבלה שמשתנה לאורך זמן
-- אילוץ Idempotency קריטי: `unique index` על `charge_items.lesson_id` — **נבדק בפועל**, ניסיון חיוב כפול לאותו שיעור נכשל כצפוי
-- RLS מופעל על כל 10 הטבלאות, מדיניות `authenticated_full_access` (ראו החלטה למטה)
-- **Security Advisor של Supabase נבדק ותוקן:** `function_search_path_mutable` תוקן (migration 0003). נותרה אזהרה אחת שהיא הגדרת Auth בדשבורד, לא DB — ראו "הבא בתור"
-- **Seed data מלא של משפחת "כהן"** לפי Acceptance Tests 1-5 במסמך האב — 2 תלמידים, 2 הסכמי מחיר, 7 שיעורים completed, חיוב אחד, תשלום חלקי אחד עם allocation
-- **הרצתי בעצמי את Acceptance Tests 1-5 מול ה-DB האמיתי ואישרתי תוצאות מדויקות:**
-  - סכום חיוב: 1,060.00 ✅
-  - שולם: 800.00 ✅
-  - יתרה: 260.00 ✅
-  - 7 שורות charge_items שסכומן 1,060.00 ✅
-  - שינוי מחיר עתידי לנועם (170₪ מ-01/01/2027) לא שינה את price_snapshot של 4 השיעורים הקיימים (עדיין 160₪) ✅
-- קובץ תיעוד `db/schema.sql` ו-`db/seed.sql` נוצרו כדי שהריפו (לא רק Supabase) יהיה Source of Truth לסכמה
+### Phase 1 — DB Schema (ללא שינוי, ראו היסטוריה קודמת)
+
+### Phase 2a — Families / Students / Pricing (UI מלא + מחובר ל-DB האמיתי)
+- שכבת API (`src/lib/api/`): `families.ts`, `students.ts`, `pricingAgreements.ts` — קריאות Supabase אמיתיות, לא מדומות
+- React Query hooks (`src/hooks/`): `useFamilies`, `useStudents`, `usePricingAgreements` — caching + invalidation אוטומטי אחרי כל שמירה
+- **מסך משפחות** (`/families`): טבלה + יצירה
+- **כרטיס משפחה** (`/families/:id`): פרטים, עריכה, רשימת ילדים מקושרת, הוספת תלמיד ישירות מהמשפחה
+- **מסך תלמידים** (`/students`): טבלה עם שם משפחה, כיתה, מקצועות
+- **כרטיס תלמיד** (`/students/:id`): פרטים, עריכה, **קישור בולט למשפחה + מספר אחים** (דרישה מפורשת מסעיף 16 במסמך האב), מחיר נוכחי, היסטוריית מחירים מלאה, כפתור להוספת הסכם מחיר חדש
+- **לוגיקת שינוי מחיר**: הסכם מחיר פתוח קודם נסגר אוטומטית יום לפני תחילת ההסכם החדש — היסטוריה נשמרת, שום שיעור קיים לא מושפע (ה-price_snapshot כבר נעול מ-Phase 1)
+- כפתורי פעולה מהירה בכרטיס תלמיד (התחל שיעור / Zoom / קבע שיעור / Drive) קיימים ב-UI אבל מנוטרלים במכוון עם tooltip שמסביר באיזה Phase הם יופעלו — כדי לא ליצור רושם מטעה של פונקציונליות שעוד לא קיימת
+
+### מה נבדק בפועל
+- `tsc -b` נקי, `vite build` production נקי (144 מודולים)
+- שרת preview עלה והחזיר HTTP 200 עם ה-title הנכון
+- אימות RLS ברמת DB (לא רק קוד): `pg_policies` מאושר — כל 10 הטבלאות חשופות רק ל-role `authenticated`, אין שום policy ל-`anon`
+
+### מגבלה שחשוב לדעת
+לא הצלחתי להריץ בדיקת דפדפן/HTTP חיה מול ה-Supabase API עצמו (למשל "תפתח את /families ותראה את כהן") מתוך סביבת הפיתוח שלי — ה-sandbox שלי חוסם גישת רשת ל-`*.supabase.co` (allowlist דומיינים מוגבל). מה שכן אימתתי במלואו: קוד תקין ומתקמפל, שאילתות מול ה-DB האמיתי דרך MCP עובדות, וה-RLS תקין ברמת ה-DB. **מומלץ שתריץ בעצמך `npm run dev` ותוודא ויזואלית שמשפחת "כהן" מוצגת נכון** — זו הבדיקה החסרה היחידה.
 
 ## בעבודה 🔧
 (כלום כרגע)
 
 ## הבא בתור ⏭
-1. Phase 2 — ניהול ליבה: Families CRUD, Students CRUD, Pricing Agreements UI, Lessons CRUD בסיסי, Dashboard יומי אמיתי (Timeline), Student Profile, Family Profile — יתחבר לנתוני "כהן" האמיתיים שכבר יושבים ב-DB.
+Phase 2b: Lessons CRUD בסיסי, Dashboard יומי אמיתי (Timeline של שיעורי היום), השלמת Student Profile (שיעור אחרון, שיעורים עתידיים, היסטוריית שיעורים), השלמת Family Profile (חיובים/תשלומים/יתרה — או שזה עובר ל-Phase 3 הפיננסי, יש להחליט).
 
 ## נדחה (Deferred) ⏸
-- **Leaked Password Protection** — לא ניתן להפעלה בטיר החינמי של Supabase (זמין רק ב-Pro ומעלה). אם תשדרג בעתיד את הפרויקט — להפעיל ב-Authentication → Policies → Password Security. עד אז זו מגבלה מקובלת (הסיכון: משתמש יחיד, לא ציבור רחב).
+- Leaked Password Protection — לא זמין בטיר Free של Supabase
 
 ## החלטות פתוחות / שאלות למשתמש ❓
-(ריק כרגע)
+- כשנגיע ל-Phase 2b: האם "שיעורים עתידיים/היסטוריה" בכרטיס תלמיד/משפחה יכללו גם UI ליצירת שיעור חדש (בלי Calendar sync עדיין — זה רק ב-Phase 5), או להמתין ל-Phase 5 כדי לא לבנות מסך שיעור כפול?
 
 ## Decisions Log
-- 26/08/2026 — RLS Phase 1 — נבחרה מדיניות "authenticated_full_access" (כל משתמש מחובר, בלי הבחנה לפי owner) כי יש משתמש מנהל יחיד כרגע. בעתיד אם יתווספו כמה מורים — יתווסף owner_id + סינון לפי auth.uid() בלי לשנות את מבנה הטבלאות
-- 26/08/2026 — charges קיבל updated_at (בניגוד למה שכתוב באופן מדויק במסמך האב סעיף 15) כי סטטוס חיוב (unpaid/partial/paid) משתנה לאורך זמן ודורש audit trail
-- 26/08/2026 — billing_type הוגבל ל-CHECK constraint עם שלושה ערכים אפשריים: per_lesson / hourly / package — מסמך האב לא פירט את הערכים המדויקים, זו החלטה סבירה שניתנת להרחבה
-- 26/08/2026 — Phase 1 הושלם, נבדק end-to-end מול DB אמיתי כולל Acceptance Tests 1-5
-- 26/08/2026 — Leaked Password Protection נדחה — לא זמין בטיר Free של Supabase, רק ב-Pro. המשתמש בחר להישאר ב-Free כרגע. משתמש ההתחברות הראשון כבר נוצר בפועל
+(ראו היסטוריה קודמת לכל הרשומות עד Phase 1)
+- 26/08/2026 — כפתורי פעולה מהירה בכרטיס תלמיד (Zoom/Drive/קבע שיעור/התחל שיעור) נוספו ל-UI כבר עכשיו אך מנוטרלים (disabled + tooltip) — כדי לשמור על מבנה המסך הסופי מהשלב הראשון בלי להטעות שהפיצ'ר כבר עובד
+- 26/08/2026 — שינוי מחיר: כשנוצר הסכם חדש, הסכם פתוח קודם (ללא valid_until) נסגר אוטומטית יום לפני תחילת החדש, דרך שתי קריאות API רצופות (לא טרנזקציה אמיתית ב-DB). זו החלטת MVP סבירה; אם בעתיד יידרש אטומיות מלאה — אפשר להעביר ללוגיקה ל-Postgres function/RPC
+- 26/08/2026 — Phase 2a הושלם; קיימת מגבלת בדיקה (ראו "מגבלה שחשוב לדעת" למעלה) שדורשת אימות ידני שלך מול `npm run dev`
