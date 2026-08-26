@@ -4,9 +4,12 @@ import { useStudent } from "@/hooks/useStudents";
 import { useFamily } from "@/hooks/useFamilies";
 import { useStudentsByFamily } from "@/hooks/useStudents";
 import { useCurrentPrice, usePricingHistory } from "@/hooks/usePricingAgreements";
+import { useLessonsByStudent } from "@/hooks/useLessons";
 import { StudentFormModal } from "@/components/students/StudentFormModal";
 import { PricingAgreementFormModal } from "@/components/pricing/PricingAgreementFormModal";
+import { LessonFormModal } from "@/components/lessons/LessonFormModal";
 import { LoadingBlock, ErrorBanner, ActiveBadge, toErrorMessage } from "@/components/shared/Feedback";
+import { formatDate, formatTime, statusLabel, statusColorClass } from "@/lib/format";
 
 export default function StudentProfile() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +21,9 @@ export default function StudentProfile() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [lessonModalOpen, setLessonModalOpen] = useState(false);
+
+  const { data: lessons } = useLessonsByStudent(id);
 
   if (isLoading) return <LoadingBlock />;
   if (error) return <ErrorBanner message={toErrorMessage(error)} />;
@@ -66,7 +72,7 @@ export default function StudentProfile() {
         </Link>
       )}
 
-      {/* פעולות מהירות — placeholders ל-Zoom/Drive/לוח שיתחברו ב-Phase 4-5 */}
+      {/* פעולות מהירות — Zoom/Drive/לוח יופעלו ב-Phase 4-5. קביעת שיעור ידנית כבר זמינה */}
       <div className="mb-6 flex flex-wrap gap-2">
         <button
           disabled
@@ -76,18 +82,17 @@ export default function StudentProfile() {
           התחל שיעור
         </button>
         <button
+          onClick={() => setLessonModalOpen(true)}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-ink-700 ring-1 ring-ink-100 hover:bg-ink-50"
+        >
+          + קבע שיעור
+        </button>
+        <button
           disabled
           className="cursor-not-allowed rounded-lg px-4 py-2 text-sm font-medium text-ink-400 ring-1 ring-ink-100 opacity-50"
           title="יופעל ב-Phase 5 (Zoom)"
         >
           Zoom
-        </button>
-        <button
-          disabled
-          className="cursor-not-allowed rounded-lg px-4 py-2 text-sm font-medium text-ink-400 ring-1 ring-ink-100 opacity-50"
-          title="יופעל ב-Phase 5 (Google Calendar)"
-        >
-          קבע שיעור
         </button>
         <button
           disabled
@@ -144,15 +149,113 @@ export default function StudentProfile() {
         </div>
       )}
 
-      {/* Placeholder לשיעור אחרון/עתידיים/היסטוריה — Phase 2b */}
-      <div className="rounded-card border border-dashed border-ink-100 bg-white p-6 text-center text-sm text-ink-400">
-        השיעור האחרון, שיעורים עתידיים והיסטוריית שיעורים יתווספו בחלק הבא של Phase 2.
-      </div>
+      {/* שיעור אחרון / עתידיים / היסטוריה */}
+      {(() => {
+        const now = new Date();
+        const past = (lessons ?? []).filter((l) => new Date(l.scheduled_start) <= now);
+        const future = (lessons ?? [])
+          .filter((l) => new Date(l.scheduled_start) > now)
+          .sort((a, b) => a.scheduled_start.localeCompare(b.scheduled_start));
+        const lastLesson = past[0]; // lessons already sorted desc by scheduled_start
+
+        return (
+          <>
+            <h2 className="mb-3 text-lg font-bold text-ink-900">השיעור האחרון</h2>
+            {lastLesson ? (
+              <div className="mb-6 rounded-card bg-white p-4 ring-1 ring-ink-100">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-sm font-medium text-ink-900">
+                    {formatDate(lastLesson.scheduled_start)} · {formatTime(lastLesson.scheduled_start)}
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColorClass(lastLesson.status)}`}>
+                    {statusLabel(lastLesson.status)}
+                  </span>
+                </div>
+                {lastLesson.topic && <p className="text-sm text-ink-700">נושא: {lastLesson.topic}</p>}
+                {lastLesson.lesson_notes && (
+                  <p className="mt-1 text-sm text-ink-700">הערות: {lastLesson.lesson_notes}</p>
+                )}
+                {lastLesson.homework && (
+                  <p className="mt-1 text-sm text-ink-700">שיעורי בית: {lastLesson.homework}</p>
+                )}
+              </div>
+            ) : (
+              <div className="mb-6 rounded-card border border-dashed border-ink-100 bg-white p-6 text-center text-ink-400">
+                עדיין לא היו שיעורים.
+              </div>
+            )}
+
+            <h2 className="mb-3 text-lg font-bold text-ink-900">
+              שיעורים עתידיים {future.length > 0 && `(${future.length})`}
+            </h2>
+            {future.length === 0 ? (
+              <div className="mb-6 rounded-card border border-dashed border-ink-100 bg-white p-6 text-center text-ink-400">
+                אין שיעורים עתידיים מתוכננים.
+              </div>
+            ) : (
+              <div className="mb-6 space-y-2">
+                {future.map((lesson) => (
+                  <div key={lesson.id} className="flex items-center justify-between rounded-card bg-white p-3 text-sm ring-1 ring-ink-100">
+                    <span className="text-ink-700">
+                      {formatDate(lesson.scheduled_start)} · {formatTime(lesson.scheduled_start)}
+                    </span>
+                    <span className="text-ink-400">{lesson.subject}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <h2 className="mb-3 text-lg font-bold text-ink-900">היסטוריית שיעורים</h2>
+            {past.length === 0 ? (
+              <div className="rounded-card border border-dashed border-ink-100 bg-white p-6 text-center text-ink-400">
+                אין עדיין היסטוריה.
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-card bg-white ring-1 ring-ink-100">
+                <table className="w-full text-sm">
+                  <thead className="bg-ink-50 text-right text-ink-400">
+                    <tr>
+                      <th className="px-4 py-2 font-medium">תאריך</th>
+                      <th className="px-4 py-2 font-medium">נושא</th>
+                      <th className="px-4 py-2 font-medium">סטטוס</th>
+                      <th className="px-4 py-2 font-medium">מחיר</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {past.map((lesson) => (
+                      <tr key={lesson.id} className="border-t border-ink-100">
+                        <td className="px-4 py-2 text-ink-700">
+                          {formatDate(lesson.scheduled_start)} {formatTime(lesson.scheduled_start)}
+                        </td>
+                        <td className="px-4 py-2 text-ink-700">{lesson.topic ?? "—"}</td>
+                        <td className="px-4 py-2">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColorClass(lesson.status)}`}>
+                            {statusLabel(lesson.status)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-ink-700">
+                          {lesson.price_snapshot != null ? `₪${lesson.price_snapshot}` : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       <StudentFormModal open={editOpen} onClose={() => setEditOpen(false)} student={student} />
       <PricingAgreementFormModal
         open={priceModalOpen}
         onClose={() => setPriceModalOpen(false)}
+        studentId={student.id}
+        familyId={student.family_id}
+      />
+      <LessonFormModal
+        open={lessonModalOpen}
+        onClose={() => setLessonModalOpen(false)}
         studentId={student.id}
         familyId={student.family_id}
       />
