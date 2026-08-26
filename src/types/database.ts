@@ -55,3 +55,36 @@ export type PricingAgreementInput = Pick<
   "student_id" | "family_id" | "rate" | "valid_from"
 > &
   Partial<Pick<PricingAgreement, "billing_type" | "standard_duration" | "valid_until" | "notes">>;
+
+export type LessonStatus = "scheduled" | "completed" | "cancelled" | "no_show";
+
+export interface Lesson {
+  id: string;
+  student_id: string;
+  family_id: string;
+  scheduled_start: string; // timestamptz
+  scheduled_end: string;
+  actual_start: string | null;
+  actual_end: string | null;
+  actual_duration: number | null;
+  subject: string | null;
+  topic: string | null;
+  status: LessonStatus;
+  price_snapshot: number | null;
+  zoom_url: string | null;
+  calendar_event_id: string | null;
+  board_id: string | null;
+  lesson_notes: string | null;
+  homework: string | null;
+  cancellation_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type LessonInput = Pick<
+  Lesson,
+  "student_id" | "family_id" | "scheduled_start" | "scheduled_end"
+> &
+  Partial<
+    Pick<Lesson, "subject" | "topic" | "status" | "price_snapshot" | "lesson_notes" | "homework">
+  >;
