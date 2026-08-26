@@ -2,6 +2,18 @@
 
 עמדת העבודה של מורה פרטי. שלב זה: תשתית בלבד (Auth + Layout + RTL + חיבור Supabase). אין עדיין ניהול תלמידים/משפחות/שיעורים — זה יגיע ב-Phase 2 לפי `docs/MASTER.md`.
 
+## אתר חי (GitHub Pages)
+
+כל push ל-`main` מפעיל אוטומטית build + deploy דרך GitHub Actions (`.github/workflows/deploy.yml`).
+כתובת האתר החי: **https://yoavyaacov.github.io/tutoros/**
+
+⚠️ פעולה חד-פעמית שחייבת להתבצע ידנית ב-GitHub (לא ניתנת לביצוע מקוד):
+Settings → Pages → Build and deployment → Source → לבחור **"GitHub Actions"** (לא "Deploy from a branch").
+בלי זה ה-workflow ירוץ בהצלחה אבל GitHub לא יפרסם את התוצאה.
+
+הראוטינג משתמש ב-`HashRouter` (כתובות כמו `/tutoros/#/students`) — במכוון, כי GitHub Pages
+לא תומך ב-server-side rewrites ל-SPA. ראו `docs/STATUS.md` להסבר המלא.
+
 ## הרצה מקומית
 
 ```bash
