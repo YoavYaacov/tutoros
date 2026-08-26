@@ -1,46 +1,44 @@
 # TutorOS — Status
 
 עודכן לאחרונה: 26/08/2026
-Phase נוכחי: Phase 2a הושלם ✅ | ממתין להתחלת Phase 2b (Lessons + Dashboard + השלמת פרופילים)
+Phase נוכחי: Phase 2 הושלם במלואו (2a+2b) ✅ | Deployment ל-GitHub Pages מוגדר ✅ | ממתין להתחלת Phase 3 (פיננסים)
 
 ## הושלם ✅
 
-### Phase 0 — Foundation (ללא שינוי, ראו היסטוריה קודמת)
+### Phase 0, Phase 1, Phase 2a — ללא שינוי (ראו היסטוריה קודמת)
 
-### Phase 1 — DB Schema (ללא שינוי, ראו היסטוריה קודמת)
+### Phase 2b — Lessons + Dashboard
+- `src/lib/api/lessons.ts` — listLessonsInRange (ליום נתון), listUpcomingLessons, listLessonsByStudent, create/update/updateStatus
+- `src/hooks/useLessons.ts` — React Query hooks תואמים
+- **Dashboard אמיתי** (`/`): Timeline של שיעורי היום עם קישור לתלמיד, KPI בסיסי (שיעורי היום/התקיימו/ממתינים/עתידיים), רשימת שיעורים קרובים
+- **כרטיס תלמיד הושלם**: שיעור אחרון (נושא/הערות/שיעורי בית), שיעורים עתידיים, היסטוריית שיעורים מלאה בטבלה, וכפתור "+ קבע שיעור" (ידני, בלי Calendar sync — זה נשאר ל-Phase 5 בכוונה, לפי החלטה קודמת שתועדה)
+- `LessonFormModal` — יצירה/עריכה ידנית, נועל price_snapshot ממחיר נוכחי של התלמיד בזמן היצירה
 
-### Phase 2a — Families / Students / Pricing (UI מלא + מחובר ל-DB האמיתי)
-- שכבת API (`src/lib/api/`): `families.ts`, `students.ts`, `pricingAgreements.ts` — קריאות Supabase אמיתיות, לא מדומות
-- React Query hooks (`src/hooks/`): `useFamilies`, `useStudents`, `usePricingAgreements` — caching + invalidation אוטומטי אחרי כל שמירה
-- **מסך משפחות** (`/families`): טבלה + יצירה
-- **כרטיס משפחה** (`/families/:id`): פרטים, עריכה, רשימת ילדים מקושרת, הוספת תלמיד ישירות מהמשפחה
-- **מסך תלמידים** (`/students`): טבלה עם שם משפחה, כיתה, מקצועות
-- **כרטיס תלמיד** (`/students/:id`): פרטים, עריכה, **קישור בולט למשפחה + מספר אחים** (דרישה מפורשת מסעיף 16 במסמך האב), מחיר נוכחי, היסטוריית מחירים מלאה, כפתור להוספת הסכם מחיר חדש
-- **לוגיקת שינוי מחיר**: הסכם מחיר פתוח קודם נסגר אוטומטית יום לפני תחילת ההסכם החדש — היסטוריה נשמרת, שום שיעור קיים לא מושפע (ה-price_snapshot כבר נעול מ-Phase 1)
-- כפתורי פעולה מהירה בכרטיס תלמיד (התחל שיעור / Zoom / קבע שיעור / Drive) קיימים ב-UI אבל מנוטרלים במכוון עם tooltip שמסביר באיזה Phase הם יופעלו — כדי לא ליצור רושם מטעה של פונקציונליות שעוד לא קיימת
-
-### מה נבדק בפועל
-- `tsc -b` נקי, `vite build` production נקי (144 מודולים)
-- שרת preview עלה והחזיר HTTP 200 עם ה-title הנכון
-- אימות RLS ברמת DB (לא רק קוד): `pg_policies` מאושר — כל 10 הטבלאות חשופות רק ל-role `authenticated`, אין שום policy ל-`anon`
-
-### מגבלה שחשוב לדעת
-לא הצלחתי להריץ בדיקת דפדפן/HTTP חיה מול ה-Supabase API עצמו (למשל "תפתח את /families ותראה את כהן") מתוך סביבת הפיתוח שלי — ה-sandbox שלי חוסם גישת רשת ל-`*.supabase.co` (allowlist דומיינים מוגבל). מה שכן אימתתי במלואו: קוד תקין ומתקמפל, שאילתות מול ה-DB האמיתי דרך MCP עובדות, וה-RLS תקין ברמת ה-DB. **מומלץ שתריץ בעצמך `npm run dev` ותוודא ויזואלית שמשפחת "כהן" מוצגת נכון** — זו הבדיקה החסרה היחידה.
+### Deployment — GitHub Pages (חדש, לא היה מתוכנן במקור כ-Phase נפרד)
+- `.github/workflows/deploy.yml` — build+deploy אוטומטי בכל push ל-`main`, דרך `actions/deploy-pages` (לא gh-pages branch ישן)
+- `vite.config.ts` — `base: "/tutoros/"` נוסף
+- **החלטה ארכיטקטונית: HashRouter במקום BrowserRouter** — GitHub Pages לא תומך ב-SPA server rewrites; HashRouter פותר את זה לגמרי בלי טריקי 404.html. Tradeoff: כתובות עם `#` (`/tutoros/#/students`)
+- `.env.production` — מכיל רק Publishable Key (ציבורי, מוגן RLS), מחויב ל-git במכוון כדי שה-CI לא יצטרך GitHub Secrets
+- `public/favicon.svg` נוסף
+- **נבדק: build זהה 1:1 למה שה-workflow ירוץ** (`rm -rf node_modules && npm ci && npm run build` מאפס — עבר נקי)
+- **נבדק: דימוי שרת סטטי אמיתי תחת `/tutoros/`** — כל ה-assets (JS/CSS/favicon) נטענים מהנתיב הנכון, index.html תקין
 
 ## בעבודה 🔧
 (כלום כרגע)
 
 ## הבא בתור ⏭
-Phase 2b: Lessons CRUD בסיסי, Dashboard יומי אמיתי (Timeline של שיעורי היום), השלמת Student Profile (שיעור אחרון, שיעורים עתידיים, היסטוריית שיעורים), השלמת Family Profile (חיובים/תשלומים/יתרה — או שזה עובר ל-Phase 3 הפיננסי, יש להחליט).
+1. **פעולה ידנית שלך (חובה, לא ניתנת לביצוע מקוד):** ב-GitHub → הריפו → Settings → Pages → Build and deployment → Source → לבחור **"GitHub Actions"**. בלי זה ה-workflow ירוץ בהצלחה ב-Actions אבל GitHub לא יפרסם תוצאה בכתובת החיה.
+2. אחרי push ראשון: לבדוק שהאתר עולה ב-`https://yoavyaacov.github.io/tutoros/` ושמשפחת "כהן" מוצגת נכון (זו הבדיקה החיה שהוחמצה קודם).
+3. Phase 3 — פיננסים: Charges/Payments UI (כרגע יש רק DB+seed מ-Phase 1, אין עדיין מסך), חיבור ל-Family Profile (המקום ה-placeholder שכבר קיים שם), Dashboard פיננסי.
 
 ## נדחה (Deferred) ⏸
 - Leaked Password Protection — לא זמין בטיר Free של Supabase
 
 ## החלטות פתוחות / שאלות למשתמש ❓
-- כשנגיע ל-Phase 2b: האם "שיעורים עתידיים/היסטוריה" בכרטיס תלמיד/משפחה יכללו גם UI ליצירת שיעור חדש (בלי Calendar sync עדיין — זה רק ב-Phase 5), או להמתין ל-Phase 5 כדי לא לבנות מסך שיעור כפול?
+(ריק כרגע)
 
 ## Decisions Log
-(ראו היסטוריה קודמת לכל הרשומות עד Phase 1)
-- 26/08/2026 — כפתורי פעולה מהירה בכרטיס תלמיד (Zoom/Drive/קבע שיעור/התחל שיעור) נוספו ל-UI כבר עכשיו אך מנוטרלים (disabled + tooltip) — כדי לשמור על מבנה המסך הסופי מהשלב הראשון בלי להטעות שהפיצ'ר כבר עובד
-- 26/08/2026 — שינוי מחיר: כשנוצר הסכם חדש, הסכם פתוח קודם (ללא valid_until) נסגר אוטומטית יום לפני תחילת החדש, דרך שתי קריאות API רצופות (לא טרנזקציה אמיתית ב-DB). זו החלטת MVP סבירה; אם בעתיד יידרש אטומיות מלאה — אפשר להעביר ללוגיקה ל-Postgres function/RPC
-- 26/08/2026 — Phase 2a הושלם; קיימת מגבלת בדיקה (ראו "מגבלה שחשוב לדעת" למעלה) שדורשת אימות ידני שלך מול `npm run dev`
+(ראו היסטוריה קודמת לרשומות עד Phase 2a)
+- 26/08/2026 — נוסף Deployment (לא היה בתוכנית Phases המקורית) — לפי בקשת המשתמש, GitHub Pages עם GitHub Actions, HashRouter כפתרון SPA routing
+- 26/08/2026 — Phase 2b: קביעת שיעור נשארת ידנית (בלי Google Calendar) עד Phase 5, כדי לא לבנות את מסך יצירת השיעור פעמיים
+- 26/08/2026 — Phase 2 (2a+2b) הושלם במלואו ונבדק (type-check, build נקי, דימוי static server עם base path)
