@@ -18,7 +18,6 @@ export function FamilyFormModal({ open, onClose, family, onSaved }: Props) {
   const [familyName, setFamilyName] = useState(family?.family_name ?? "");
   const [payerName, setPayerName] = useState(family?.payer_name ?? "");
   const [phone, setPhone] = useState(family?.phone ?? "");
-  const [email, setEmail] = useState(family?.email ?? "");
   const [notes, setNotes] = useState(family?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +33,6 @@ export function FamilyFormModal({ open, onClose, family, onSaved }: Props) {
         family_name: familyName.trim(),
         payer_name: payerName.trim(),
         phone: phone.trim() || null,
-        email: email.trim() || null,
         notes: notes.trim() || null,
       };
       const saved = isEdit
@@ -73,15 +71,6 @@ export function FamilyFormModal({ open, onClose, family, onSaved }: Props) {
             dir="ltr"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-          />
-        </FormField>
-        <FormField label="אימייל">
-          <input
-            type="email"
-            className={inputClass}
-            dir="ltr"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
           />
         </FormField>
         <FormField label="הערות">

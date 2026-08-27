@@ -17,7 +17,6 @@ export function PaymentFormModal({ open, onClose, familyId, balance, onSaved }: 
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +44,6 @@ export function PaymentFormModal({ open, onClose, familyId, balance, onSaved }: 
         amount: numericAmount,
         payment_date: paymentDate,
         payment_method: paymentMethod.trim() || null,
-        reference: reference.trim() || null,
         notes: notes.trim() || null,
       });
       onSaved?.();
@@ -96,15 +94,6 @@ export function PaymentFormModal({ open, onClose, familyId, balance, onSaved }: 
             />
           </FormField>
         </div>
-
-        <FormField label="אסמכתא">
-          <input
-            type="text"
-            className={inputClass}
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-          />
-        </FormField>
 
         <FormField label="הערות">
           <textarea

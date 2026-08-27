@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useFamilies } from "@/hooks/useFamilies";
 import { useAllFamilyBalances } from "@/hooks/usePayments";
+import { useGenerateChargesForAllFamilies } from "@/hooks/useCharges";
 import { PaymentFormModal } from "@/components/payments/PaymentFormModal";
 import { LoadingBlock, ErrorBanner, toErrorMessage } from "@/components/shared/Feedback";
 import { formatCurrency, formatBillingPeriod } from "@/lib/format";
@@ -9,7 +10,24 @@ import { formatCurrency, formatBillingPeriod } from "@/lib/format";
 export default function Payments() {
   const { data: families, isLoading: familiesLoading, error: familiesError } = useFamilies();
   const { data: balances, isLoading: balancesLoading, error: balancesError } = useAllFamilyBalances();
+  const generateMutation = useGenerateChargesForAllFamilies();
+
   const [payFamilyId, setPayFamilyId] = useState<string | null>(null);
+  const [generateMessage, setGenerateMessage] = useState<string | null>(null);
+
+  async function handleGenerateCharges() {
+    setGenerateMessage(null);
+    try {
+      const created = await generateMutation.mutateAsync();
+      setGenerateMessage(
+        created.length === 0
+          ? "אין שיעורים חדשים שהתקיימו וטרם חויבו, בכל המשפחות."
+          : `נוצרו ${created.length} חיובים חדשים.`,
+      );
+    } catch (err) {
+      setGenerateMessage(toErrorMessage(err));
+    }
+  }
 
   if (familiesLoading || balancesLoading) return <LoadingBlock />;
   if (familiesError) return <ErrorBanner message={toErrorMessage(familiesError)} />;
@@ -27,12 +45,25 @@ export default function Payments() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-ink-900">תשלומים</h1>
-        <span className="text-sm text-ink-400">
-          סה"כ לגבייה: <span className="font-bold text-ink-900">{formatCurrency(totalOutstanding)}</span>
-        </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleGenerateCharges}
+            disabled={generateMutation.isPending}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-ink-700 ring-1 ring-ink-100 hover:bg-ink-50 disabled:opacity-60"
+          >
+            {generateMutation.isPending ? "בודק שיעורים..." : "צור חיובים משיעורים שלא חויבו"}
+          </button>
+          <span className="text-sm text-ink-400">
+            סה"כ לגבייה: <span className="font-bold text-ink-900">{formatCurrency(totalOutstanding)}</span>
+          </span>
+        </div>
       </div>
+
+      {generateMessage && (
+        <div className="mb-4 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-700">{generateMessage}</div>
+      )}
 
       {rows.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-white p-8 text-center text-ink-400">
@@ -44,7 +75,7 @@ export default function Payments() {
             <thead className="bg-ink-50 text-right text-ink-400">
               <tr>
                 <th className="px-4 py-2 font-medium">משפחה</th>
-                <th className="px-4 py-2 font-medium">לחודשים</th>
+                <th className="px-4 py-2 font-medium">חיוב לחודש</th>
                 <th className="px-4 py-2 font-medium">חויב בסה"כ</th>
                 <th className="px-4 py-2 font-medium">שולם</th>
                 <th className="px-4 py-2 font-medium">יתרה</th>

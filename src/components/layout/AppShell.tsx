@@ -5,7 +5,7 @@ const NAV_ITEMS = [
   { to: "/", label: "ראשי", end: true },
   { to: "/students", label: "תלמידים" },
   { to: "/families", label: "משפחות" },
-  { to: "/schedule", label: "לוח שיעורים" },
+  { to: "/schedule", label: "יומן" },
   { to: "/payments", label: "תשלומים" },
   { to: "/reports", label: "דוחות" },
   { to: "/settings", label: "הגדרות" },

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Modal } from "@/components/shared/Modal";
 import { FormField, inputClass } from "@/components/shared/FormField";
 import { ErrorBanner, toErrorMessage } from "@/components/shared/Feedback";
@@ -31,6 +31,13 @@ export function StudentFormModal({ open, onClose, student, fixedFamilyId, onSave
   const createMutation = useCreateStudent();
   const updateMutation = useUpdateStudent(student?.id ?? "");
   const submitting = createMutation.isPending || updateMutation.isPending;
+
+  // תלמיד חדש: שם המשפחה מתמלא כברירת מחדל לפי שם המשפחה שנבחרה, כל עוד המשתמש לא הקליד משהו בעצמו
+  useEffect(() => {
+    if (isEdit || lastName) return;
+    const family = families?.find((f) => f.id === familyId);
+    if (family) setLastName(family.family_name);
+  }, [isEdit, familyId, families, lastName]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

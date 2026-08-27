@@ -17,16 +17,14 @@ export function useChargeItems(chargeId: string | undefined) {
   });
 }
 
-function invalidateBillingQueries(queryClient: ReturnType<typeof useQueryClient>) {
-  // יצירת חיוב משפיעה גם על היתרות המוצגות דרך payments (balance/allBalances)
-  queryClient.invalidateQueries({ queryKey: ["charges"] });
-  queryClient.invalidateQueries({ queryKey: ["payments"] });
-}
-
-export function useGenerateCharges(familyId: string) {
+/** יצירת חיובים לכל המשפחות בבת אחת, מהמסך "תשלומים" — מרעננת גם חיובים וגם יתרות */
+export function useGenerateChargesForAllFamilies() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => chargesApi.generateChargesFromUnbilledLessons(familyId),
-    onSuccess: () => invalidateBillingQueries(queryClient),
+    mutationFn: () => chargesApi.generateChargesForAllFamilies(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["charges"] });
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+    },
   });
 }

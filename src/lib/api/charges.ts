@@ -51,18 +51,16 @@ export async function listChargeItemsByCharge(chargeId: string): Promise<ChargeI
   return data as ChargeItem[];
 }
 
-/**
- * הופך שיעורים שהתקיימו ("completed") ועדיין לא חויבו לחיוב חדש למשפחה.
- * שיעורים מקובצים לפי חודש (billing_period בפורמט YYYY-MM), חיוב אחד לכל חודש עם שיעורים לא-מחויבים.
- * Idempotent: שיעור שכבר יש לו charge_item לא ייכלל שוב (וגם מוגן ב-unique index על lesson_id ב-DB).
- */
-export async function generateChargesFromUnbilledLessons(familyId: string): Promise<Charge[]> {
-  const { data: lessons, error: lessonsError } = await supabase
+/** שיעורים "completed" שעדיין אין להם charge_item — אם familyId מושמט, נבדק על פני כל המשפחות */
+async function findUnbilledCompletedLessons(familyId?: string) {
+  let query = supabase
     .from("lessons")
     .select("*")
-    .eq("family_id", familyId)
     .eq("status", "completed")
     .order("scheduled_start", { ascending: true });
+  if (familyId) query = query.eq("family_id", familyId);
+
+  const { data: lessons, error: lessonsError } = await query;
   if (lessonsError) throw lessonsError;
   if (!lessons || lessons.length === 0) return [];
 
@@ -74,19 +72,30 @@ export async function generateChargesFromUnbilledLessons(familyId: string): Prom
   if (billedError) throw billedError;
 
   const billedSet = new Set((billedItems ?? []).map((i) => i.lesson_id));
-  const unbilled = lessons.filter((l) => !billedSet.has(l.id));
+  return lessons.filter((l) => !billedSet.has(l.id));
+}
+
+/**
+ * הופך רשימת שיעורים לא-מחויבים לחיובים: מקובצים לפי (משפחה, חודש) — חיוב אחד לכל צירוף כזה.
+ * Idempotent: הקבוצה כבר לא כוללת שיעורים שיש להם charge_item (וגם מוגן ב-unique index ב-DB).
+ */
+async function createChargesFromLessons(
+  unbilled: Awaited<ReturnType<typeof findUnbilledCompletedLessons>>,
+): Promise<Charge[]> {
   if (unbilled.length === 0) return [];
 
   const groups = new Map<string, typeof unbilled>();
   for (const lesson of unbilled) {
     const period = lesson.scheduled_start.slice(0, 7); // "YYYY-MM"
-    const group = groups.get(period);
+    const key = `${lesson.family_id}|${period}`;
+    const group = groups.get(key);
     if (group) group.push(lesson);
-    else groups.set(period, [lesson]);
+    else groups.set(key, [lesson]);
   }
 
   const createdCharges: Charge[] = [];
-  for (const [period, groupLessons] of groups) {
+  for (const [key, groupLessons] of groups) {
+    const [familyId, period] = key.split("|");
     const amount = groupLessons.reduce((sum, l) => sum + (l.price_snapshot ?? 0), 0);
 
     const { data: charge, error: chargeError } = await supabase
@@ -111,4 +120,13 @@ export async function generateChargesFromUnbilledLessons(familyId: string): Prom
   }
 
   return createdCharges;
+}
+
+/**
+ * סורק את כל המשפחות בבת אחת ויוצר חיובים לכל שיעור שהתקיים וטרם חויב.
+ * זו הפעולה הגלובלית שמוצגת בראש מסך "תשלומים" — לא פעולה ידנית לכל משפחה בנפרד.
+ */
+export async function generateChargesForAllFamilies(): Promise<Charge[]> {
+  const unbilled = await findUnbilledCompletedLessons();
+  return createChargesFromLessons(unbilled);
 }

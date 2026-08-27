@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useFamily } from "@/hooks/useFamilies";
 import { useStudentsByFamily } from "@/hooks/useStudents";
-import { useChargesWithBalance, useGenerateCharges } from "@/hooks/useCharges";
+import { useChargesWithBalance } from "@/hooks/useCharges";
 import { useFamilyBalance, usePaymentsByFamily } from "@/hooks/usePayments";
 import { FamilyFormModal } from "@/components/families/FamilyFormModal";
 import { StudentFormModal } from "@/components/students/StudentFormModal";
@@ -23,26 +23,10 @@ export default function FamilyProfile() {
   const { data: charges } = useChargesWithBalance(id);
   const { data: payments } = usePaymentsByFamily(id);
   const { data: balance } = useFamilyBalance(id);
-  const generateMutation = useGenerateCharges(id ?? "");
 
   const [editOpen, setEditOpen] = useState(false);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
-  const [generateMessage, setGenerateMessage] = useState<string | null>(null);
-
-  async function handleGenerateCharges() {
-    setGenerateMessage(null);
-    try {
-      const created = await generateMutation.mutateAsync();
-      setGenerateMessage(
-        created.length === 0
-          ? "אין שיעורים חדשים שהתקיימו וטרם חויבו."
-          : `נוצרו ${created.length} חיובים חדשים.`,
-      );
-    } catch (err) {
-      setGenerateMessage(toErrorMessage(err));
-    }
-  }
 
   if (isLoading) return <LoadingBlock />;
   if (error) return <ErrorBanner message={toErrorMessage(error)} />;
@@ -63,7 +47,6 @@ export default function FamilyProfile() {
           <p className="text-sm text-ink-400">
             הורה/משלם: {family.payer_name}
             {family.phone && ` · ${family.phone}`}
-            {family.email && ` · ${family.email}`}
           </p>
         </div>
         <button
@@ -123,27 +106,14 @@ export default function FamilyProfile() {
 
       <div className="mt-8 mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold text-ink-900">פיננסים</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={handleGenerateCharges}
-            disabled={generateMutation.isPending}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-ink-700 ring-1 ring-ink-100 hover:bg-ink-50 disabled:opacity-60"
-          >
-            {generateMutation.isPending ? "בודק שיעורים..." : "צור חיוב משיעורים שלא חויבו"}
-          </button>
-          <button
-            onClick={() => setPayOpen(true)}
-            disabled={!balance}
-            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-40"
-          >
-            סמן תשלום
-          </button>
-        </div>
+        <button
+          onClick={() => setPayOpen(true)}
+          disabled={!balance}
+          className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-40"
+        >
+          סמן תשלום
+        </button>
       </div>
-
-      {generateMessage && (
-        <div className="mb-4 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-700">{generateMessage}</div>
-      )}
 
       <div className="mb-6 rounded-card bg-white p-4 ring-1 ring-ink-100">
         <p className="text-xs text-ink-400">יתרה פתוחה</p>
@@ -203,7 +173,6 @@ export default function FamilyProfile() {
                 <th className="px-4 py-2 font-medium">תאריך</th>
                 <th className="px-4 py-2 font-medium">סכום</th>
                 <th className="px-4 py-2 font-medium">אמצעי</th>
-                <th className="px-4 py-2 font-medium">אסמכתא</th>
               </tr>
             </thead>
             <tbody>
@@ -212,7 +181,6 @@ export default function FamilyProfile() {
                   <td className="px-4 py-2 text-ink-700">{formatDate(payment.payment_date)}</td>
                   <td className="px-4 py-2 text-ink-700">{formatCurrency(payment.amount)}</td>
                   <td className="px-4 py-2 text-ink-700">{payment.payment_method ?? "—"}</td>
-                  <td className="px-4 py-2 text-ink-700">{payment.reference ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

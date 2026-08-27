@@ -1,11 +1,12 @@
 // טיפוסים אלה חייבים להישאר תואמים 1:1 ל-db/schema.sql. אם משנים עמודה ב-DB — לעדכן גם כאן.
+// הערה: עמודת email עדיין קיימת פיזית ב-families/students (ה-DDL למחיקתה נחסם ע"י הרשאות המערכת),
+// אבל היא לא בשימוש באפליקציה יותר — לכן הושמטה מהטיפוסים ומה-UI בכוונה, לפי בקשת המשתמש.
 
 export interface Family {
   id: string;
   family_name: string;
   payer_name: string;
   phone: string | null;
-  email: string | null;
   notes: string | null;
   active: boolean;
   created_at: string;
@@ -13,7 +14,7 @@ export interface Family {
 }
 
 export type FamilyInput = Pick<Family, "family_name" | "payer_name"> &
-  Partial<Pick<Family, "phone" | "email" | "notes" | "active">>;
+  Partial<Pick<Family, "phone" | "notes" | "active">>;
 
 export interface Student {
   id: string;
@@ -24,7 +25,6 @@ export interface Student {
   school: string | null;
   subjects: string[];
   phone: string | null;
-  email: string | null;
   notes: string | null;
   active: boolean;
   created_at: string;
@@ -32,7 +32,7 @@ export interface Student {
 }
 
 export type StudentInput = Pick<Student, "family_id" | "first_name" | "last_name"> &
-  Partial<Pick<Student, "grade" | "school" | "subjects" | "phone" | "email" | "notes" | "active">>;
+  Partial<Pick<Student, "grade" | "school" | "subjects" | "phone" | "notes" | "active">>;
 
 export type BillingType = "per_lesson" | "hourly" | "package";
 
