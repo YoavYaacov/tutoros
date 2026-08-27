@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Modal } from "@/components/shared/Modal";
 import { FormField, inputClass } from "@/components/shared/FormField";
 import { ErrorBanner, toErrorMessage } from "@/components/shared/Feedback";
@@ -42,11 +42,19 @@ export function LessonFormModal({ open, onClose, studentId, familyId, lesson, on
   const [subject, setSubject] = useState(lesson?.subject ?? "מתמטיקה");
   const [topic, setTopic] = useState(lesson?.topic ?? "");
   const [status, setStatus] = useState<LessonStatus>(lesson?.status ?? "scheduled");
+  const [price, setPrice] = useState(lesson?.price_snapshot != null ? String(lesson.price_snapshot) : "");
   const [error, setError] = useState<string | null>(null);
 
   const createMutation = useCreateLesson();
   const updateMutation = useUpdateLesson(lesson?.id ?? "");
   const submitting = createMutation.isPending || updateMutation.isPending;
+
+  // שיעור חדש: המחיר מתמלא כברירת מחדל מהמחיר הרגיל של התלמיד, אבל ניתן לשינוי ידני —
+  // לשיעור שהתארך/התקצר, או לשיעור משותף שסוכם עליו מחיר אחר לכל תלמיד.
+  useEffect(() => {
+    if (isEdit || price) return;
+    if (currentPrice) setPrice(String(currentPrice.rate));
+  }, [isEdit, price, currentPrice]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -60,8 +68,8 @@ export function LessonFormModal({ open, onClose, studentId, familyId, lesson, on
         subject: subject.trim() || null,
         topic: topic.trim() || null,
         status,
-        // ננעל בזמן היצירה — לא מחושב מחדש ממחיר עתידי
-        price_snapshot: currentPrice?.rate ?? lesson?.price_snapshot ?? null,
+        // ננעל על השיעור הספציפי הזה — לא מחושב מחדש ממחיר עתידי, וניתן לעריכה ידנית
+        price_snapshot: price.trim() === "" ? null : Number(price),
       };
       if (isEdit) {
         await updateMutation.mutateAsync(input);
@@ -127,11 +135,21 @@ export function LessonFormModal({ open, onClose, studentId, familyId, lesson, on
           </FormField>
         )}
 
-        {currentPrice && (
-          <p className="mb-3 text-xs text-ink-400">
-            מחיר שיינעל על השיעור: ₪{currentPrice.rate}
-          </p>
-        )}
+        <FormField label="מחיר לשיעור הזה (₪)" required>
+          <input
+            type="number"
+            min={0}
+            step="1"
+            className={inputClass}
+            required
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </FormField>
+        <p className="mb-3 text-xs text-ink-400">
+          המחיר נעול על השיעור הספציפי הזה בלבד (לא ישתנה אם המחיר הרגיל של התלמיד ישתנה) — אפשר
+          לערוך אותו ידנית, למשל אם השיעור התארך/התקצר, או ששיעור משותף עם תלמיד נוסף תומחר אחרת.
+        </p>
 
         {error && (
           <div className="mb-3">

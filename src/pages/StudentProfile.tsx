@@ -10,6 +10,7 @@ import { PricingAgreementFormModal } from "@/components/pricing/PricingAgreement
 import { LessonFormModal } from "@/components/lessons/LessonFormModal";
 import { LoadingBlock, ErrorBanner, ActiveBadge, toErrorMessage } from "@/components/shared/Feedback";
 import { formatDate, formatTime, statusLabel, statusColorClass } from "@/lib/format";
+import type { Lesson } from "@/types/database";
 
 export default function StudentProfile() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,16 @@ export default function StudentProfile() {
   const [editOpen, setEditOpen] = useState(false);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [lessonModalOpen, setLessonModalOpen] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<Lesson | undefined>(undefined);
+
+  function openNewLesson() {
+    setEditingLesson(undefined);
+    setLessonModalOpen(true);
+  }
+  function openEditLesson(lesson: Lesson) {
+    setEditingLesson(lesson);
+    setLessonModalOpen(true);
+  }
 
   const { data: lessons } = useLessonsByStudent(id);
 
@@ -82,7 +93,7 @@ export default function StudentProfile() {
           התחל שיעור
         </button>
         <button
-          onClick={() => setLessonModalOpen(true)}
+          onClick={openNewLesson}
           className="rounded-lg px-4 py-2 text-sm font-medium text-ink-700 ring-1 ring-ink-100 hover:bg-ink-50"
         >
           + קבע שיעור
@@ -195,7 +206,11 @@ export default function StudentProfile() {
             ) : (
               <div className="mb-6 space-y-2">
                 {future.map((lesson) => (
-                  <div key={lesson.id} className="flex items-center justify-between rounded-card bg-white p-3 text-sm ring-1 ring-ink-100">
+                  <div
+                    key={lesson.id}
+                    onClick={() => openEditLesson(lesson)}
+                    className="flex cursor-pointer items-center justify-between rounded-card bg-white p-3 text-sm ring-1 ring-ink-100 hover:ring-brand-400"
+                  >
                     <span className="text-ink-700">
                       {formatDate(lesson.scheduled_start)} · {formatTime(lesson.scheduled_start)}
                     </span>
@@ -223,7 +238,11 @@ export default function StudentProfile() {
                   </thead>
                   <tbody>
                     {past.map((lesson) => (
-                      <tr key={lesson.id} className="border-t border-ink-100">
+                      <tr
+                        key={lesson.id}
+                        onClick={() => openEditLesson(lesson)}
+                        className="cursor-pointer border-t border-ink-100 hover:bg-ink-50"
+                      >
                         <td className="px-4 py-2 text-ink-700">
                           {formatDate(lesson.scheduled_start)} {formatTime(lesson.scheduled_start)}
                         </td>
@@ -258,6 +277,7 @@ export default function StudentProfile() {
         onClose={() => setLessonModalOpen(false)}
         studentId={student.id}
         familyId={student.family_id}
+        lesson={editingLesson}
       />
     </div>
   );
