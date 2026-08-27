@@ -25,6 +25,12 @@ export async function listUpcomingLessons(limit = 10): Promise<Lesson[]> {
   return data as Lesson[];
 }
 
+export async function getLesson(id: string): Promise<Lesson> {
+  const { data, error } = await supabase.from("lessons").select("*").eq("id", id).single();
+  if (error) throw error;
+  return data as Lesson;
+}
+
 export async function listLessonsByStudent(studentId: string): Promise<Lesson[]> {
   const { data, error } = await supabase
     .from("lessons")
@@ -54,4 +60,11 @@ export async function updateLesson(id: string, input: Partial<LessonInput>): Pro
 
 export async function updateLessonStatus(id: string, status: LessonStatus): Promise<Lesson> {
   return updateLesson(id, { status });
+}
+
+/** מסמן "התחלת שיעור" — אידמפוטנטי: אם actual_start כבר קיים, לא נוגעים בו (לא "מאפסים" זמן שכבר נמדד) */
+export async function startLesson(id: string): Promise<Lesson> {
+  const lesson = await getLesson(id);
+  if (lesson.actual_start) return lesson;
+  return updateLesson(id, { actual_start: new Date().toISOString() });
 }

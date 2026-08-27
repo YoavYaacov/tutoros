@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useStudent } from "@/hooks/useStudents";
 import { useFamily } from "@/hooks/useFamilies";
 import { useStudentsByFamily } from "@/hooks/useStudents";
 import { useCurrentPrice, usePricingHistory } from "@/hooks/usePricingAgreements";
-import { useLessonsByStudent } from "@/hooks/useLessons";
+import { useLessonsByStudent, useStartLesson } from "@/hooks/useLessons";
 import { StudentFormModal } from "@/components/students/StudentFormModal";
 import { PricingAgreementFormModal } from "@/components/pricing/PricingAgreementFormModal";
 import { LessonFormModal } from "@/components/lessons/LessonFormModal";
@@ -14,6 +14,7 @@ import type { Lesson } from "@/types/database";
 
 export default function StudentProfile() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: student, isLoading, error } = useStudent(id);
   const { data: family } = useFamily(student?.family_id);
   const { data: siblings } = useStudentsByFamily(student?.family_id);
@@ -35,12 +36,23 @@ export default function StudentProfile() {
   }
 
   const { data: lessons } = useLessonsByStudent(id);
+  const startLessonMutation = useStartLesson();
 
   if (isLoading) return <LoadingBlock />;
   if (error) return <ErrorBanner message={toErrorMessage(error)} />;
   if (!student) return <ErrorBanner message="התלמיד לא נמצא" />;
 
   const siblingCount = (siblings?.length ?? 1) - 1;
+
+  const nextScheduledLesson = (lessons ?? [])
+    .filter((l) => l.status === "scheduled")
+    .sort((a, b) => a.scheduled_start.localeCompare(b.scheduled_start))[0];
+
+  async function handleStartLesson() {
+    if (!nextScheduledLesson) return;
+    await startLessonMutation.mutateAsync(nextScheduledLesson.id);
+    navigate(`/lesson/${nextScheduledLesson.id}`);
+  }
 
   return (
     <div>
@@ -83,14 +95,15 @@ export default function StudentProfile() {
         </Link>
       )}
 
-      {/* פעולות מהירות — Zoom/Drive/לוח יופעלו ב-Phase 4-5. קביעת שיעור ידנית כבר זמינה */}
+      {/* פעולות מהירות — Zoom/Drive יופעלו ב-Phase 5. קביעת שיעור ו-Lesson Workspace כבר זמינים */}
       <div className="mb-6 flex flex-wrap gap-2">
         <button
-          disabled
-          className="cursor-not-allowed rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white opacity-50"
-          title="יופעל ב-Phase 4 (Lesson Workspace)"
+          onClick={handleStartLesson}
+          disabled={!nextScheduledLesson || startLessonMutation.isPending}
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          title={nextScheduledLesson ? undefined : "אין שיעור מתוכנן להתחיל"}
         >
-          התחל שיעור
+          {startLessonMutation.isPending ? "מתחיל..." : "התחל שיעור"}
         </button>
         <button
           onClick={openNewLesson}

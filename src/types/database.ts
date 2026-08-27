@@ -86,8 +86,33 @@ export type LessonInput = Pick<
   "student_id" | "family_id" | "scheduled_start" | "scheduled_end"
 > &
   Partial<
-    Pick<Lesson, "subject" | "topic" | "status" | "price_snapshot" | "lesson_notes" | "homework">
+    Pick<
+      Lesson,
+      | "subject"
+      | "topic"
+      | "status"
+      | "price_snapshot"
+      | "lesson_notes"
+      | "homework"
+      | "actual_start"
+      | "actual_end"
+      | "actual_duration"
+      | "board_id"
+    >
   >;
+
+export interface LessonBoard {
+  id: string;
+  lesson_id: string;
+  student_id: string;
+  board_data: Record<string, unknown>; // סצנת Excalidraw: { elements, appState, files }
+  preview_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type LessonBoardInput = Pick<LessonBoard, "lesson_id" | "student_id"> &
+  Partial<Pick<LessonBoard, "board_data" | "preview_url">>;
 
 export type ChargeStatus = "unpaid" | "partial" | "paid" | "not_due";
 

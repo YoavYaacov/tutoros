@@ -1,7 +1,7 @@
 # TutorOS — Status
 
 עודכן לאחרונה: 28/08/2026
-Phase נוכחי: Phase 3 (פיננסים) — build נקי, נבדק בדפדפן בפועל (כולל שימוש אמיתי של המשתמש), נדחף ל-main
+Phase נוכחי: Phase 4 (Lesson Workspace + Whiteboard) — Stage A (הליבה) הושלם ונבדק E2E בדפדפן ✅ | Stage B (MathLive+PDF.js) בעבודה
 
 ## הושלם ✅
 
@@ -43,6 +43,22 @@ Phase נוכחי: Phase 3 (פיננסים) — build נקי, נבדק בדפדפ
 - `src/pages/StudentProfile.tsx` — שורות שיעור (עתידי/היסטוריה) לחיצות כעת ופותחות את LessonFormModal במצב עריכה על אותו שיעור — **זה גם סוגר את הפער שתועד למטה**: אפשר עכשיו לסמן שיעור כ"התקיים" מה-UI.
 
 **אומת:** `npm run build` נקי (type-check + vite build), ונבדק בדפדפן בפועל מול נתוני "כהן" האמיתיים ב-Supabase — כולל שימוש אמיתי של המשתמש (3 תשלומים בסה"כ ₪1,060 על חיוב של ₪1,060 → יתרה ₪0, סטטוס 'paid'). כפתור היצירה הגלובלי נבדק גם הוא ("אין שיעורים חדשים שהתקיימו וטרם חויבו" כשאין מה ליצור). עריכת שיעור קיים נבדקה: לחיצה על שורת שיעור פותחת מודל עם הנתונים האמיתיים (תאריך/סטטוס/מחיר) מוכנים לעריכה.
+
+### Phase 4, Stage A — Lesson Workspace (הליבה)
+בלי migration — הכל מתאים לסכימה הקיימת. תלות חדשה: `@excalidraw/excalidraw` (טעינה עצלה, `React.lazy`, כדי לא לנפח את הבאנדל הראשי של שאר המסכים).
+- `src/types/database.ts` — נוסף `LessonBoard`/`LessonBoardInput`, ו-`LessonInput` קיבל `actual_start`/`actual_end`/`actual_duration`/`board_id`.
+- `src/lib/api/lessons.ts` — `getLesson(id)`, ו-`startLesson(id)` **אידמפוטנטי**: לא דורס `actual_start` אם כבר קיים (כדי לא "לאפס" זמן מדוד — היה פוגע באמינות משך השיעור המחויב).
+- `src/lib/api/lessonBoards.ts` (חדש) — CRUD ללוחות: `getLessonBoardByLessonId`, `createLessonBoard` (גם מעדכן `lessons.board_id`, המצביע הכפול בסכימה), `updateLessonBoardData`, `getPreviousBoardDataForStudent` (ל"המשך מהשיעור הקודם").
+- `src/hooks/useDebouncedCallback.ts` (חדש, כללי) — `{debounced, flush}`; `flush` נקרא ב-cleanup של unmount כדי לא לאבד שינוי אחרון שממתין ב-debounce.
+- `src/hooks/useLessons.ts` — נוספו `useLesson(id)`, `useStartLesson()`, ו-`useAutosaveLessonFields(id)` — **חריגה מכוונת מהקונבנציה**: משתמש ב-`setQueryData` ולא ב-`invalidateQueries` (כי זה יורה כל 2 שניות תוך כדי הקלדה, ו-refetch היה מתחרה בעריכה חיה).
+- `src/hooks/useLessonBoards.ts` (חדש) — אותו דפוס: `useAutosaveLessonBoard` הוא `setQueryData`-בלבד, `useCreateLessonBoard` (פעולה חד-פעמית) הוא invalidate רגיל.
+- `src/pages/LessonWorkspace.tsx` (חדש, route `/lesson/:lessonId`) — **בכוונה מחוץ ל-AppShell** (בלי סיידבר, מסך מלא): header (שם תלמיד, טיימר, אינדיקטור שמירה, "סיום שיעור"), Side Panel (שיעור קודם לקריאה + נושא/הערות/ש.בית לעריכה חיה עם autosave), ולוח Excalidraw. יצירת לוח: אם יש לוח קודם לתלמיד — שואל "לוח חדש / המשך מהשיעור הקודם"; אחרת יוצר לוח ריק בשקט.
+- `src/components/lessonWorkspace/` (חדש): `ExcalidrawBoard.tsx` (autosave עם debounce 2.5s דרך `serializeAsJSON`, כולל files/תמונות מוטמעות כ-base64 — **אין Storage bucket בפרויקט**, זו החלטה מכוונת ל-MVP), `BoardStartChoiceModal.tsx`, `LessonTimer.tsx` (שעון עצר פשוט, בלי התראת חריגה), `SaveIndicator.tsx`, `LessonSidePanel.tsx`, `EndLessonModal.tsx` (מחשב משך בפועל, ניתן לעריכה; לחיצה כפולה מוגנת ב-`disabled` בזמן שמירה).
+- `src/pages/StudentProfile.tsx` — "התחל שיעור" מופעל: בוחר אוטומטית את השיעור המתוכנן הקרוב ביותר, קורא ל-`startLesson`, מנווט ל-`/lesson/:id`.
+
+**אומת E2E בדפדפן על שיעור אמיתי (לא רק seed):** נוצר שיעור חדש → "התחל שיעור" → הלוח נטען (Excalidraw מלא, כל הכלים) → ציור נשמר אוטומטית ל-DB (`lesson_boards.board_data`) → עריכת "נושא" בסייד פאנל נשמרה אוטומטית ל-`lessons.topic` → "סיום שיעור" עדכן `status='completed'`, `actual_end`, `actual_duration=3` → חזרה לכרטיס תלמיד הציגה את זה נכון → **"צור חיובים משיעורים שלא חויבו" במסך תשלומים אסף את השיעור אוטומטית ויצר חיוב חדש** (יתרת משפחת כהן עלתה מ-₪0 ל-₪160, "אוגוסט 2026") — מוודא שהאינטגרציה בין Phase 3 ל-Phase 4 עובדת מקצה לקצה.
+
+**באג שנמצא ותוקן תוך כדי בדיקה:** `EndLessonModal` נשאר mounted ברקע (עם `open=false`) מרגע הכניסה ל-Workspace, אז `useState` עם ערך התחלתי (משך מחושב / נושא) קלט את הערכים **בזמן ה-mount המוקדם**, לא בזמן הפתיחה בפועל — תוקן עם `useEffect` שמאתחל מחדש בכל `open===true`, אותו דפוס בדיוק שכבר תוקן קודם ב-`PaymentFormModal`.
 
 ## הבא בתור ⏭
 1. מסך "יומן" (`/schedule`) — עדיין אין מסך מאחורי הלינק בתפריט. לא שובץ במפורש לאף Phase במסמך האב; צריך להחליט מתי לבנות (יומן שבועי/חודשי, לא רק Timeline יומי כמו בדשבורד).
