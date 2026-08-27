@@ -88,3 +88,63 @@ export type LessonInput = Pick<
   Partial<
     Pick<Lesson, "subject" | "topic" | "status" | "price_snapshot" | "lesson_notes" | "homework">
   >;
+
+export type ChargeStatus = "unpaid" | "partial" | "paid" | "not_due";
+
+export interface Charge {
+  id: string;
+  family_id: string;
+  billing_period: string;
+  amount: number;
+  due_date: string | null; // date
+  status: ChargeStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ChargeInput = Pick<Charge, "family_id" | "billing_period" | "amount"> &
+  Partial<Pick<Charge, "due_date" | "status" | "notes">>;
+
+export interface ChargeItem {
+  id: string;
+  charge_id: string;
+  student_id: string;
+  lesson_id: string | null;
+  description: string;
+  amount: number;
+  created_at: string;
+}
+
+export type ChargeItemInput = Pick<
+  ChargeItem,
+  "charge_id" | "student_id" | "description" | "amount"
+> &
+  Partial<Pick<ChargeItem, "lesson_id">>;
+
+export interface Payment {
+  id: string;
+  family_id: string;
+  payment_date: string; // date
+  amount: number;
+  payment_method: string | null;
+  reference: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export type PaymentInput = Pick<Payment, "family_id" | "amount"> &
+  Partial<Pick<Payment, "payment_date" | "payment_method" | "reference" | "notes">>;
+
+export interface PaymentAllocation {
+  id: string;
+  payment_id: string;
+  charge_id: string;
+  allocated_amount: number;
+  created_at: string;
+}
+
+export type PaymentAllocationInput = Pick<
+  PaymentAllocation,
+  "payment_id" | "charge_id" | "allocated_amount"
+>;

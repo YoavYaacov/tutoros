@@ -8,6 +8,7 @@ import Families from "@/pages/Families";
 import FamilyProfile from "@/pages/FamilyProfile";
 import Students from "@/pages/Students";
 import StudentProfile from "@/pages/StudentProfile";
+import Payments from "@/pages/Payments";
 
 export default function App() {
   return (
@@ -28,7 +29,8 @@ export default function App() {
             <Route path="/families/:id" element={<FamilyProfile />} />
             <Route path="/students" element={<Students />} />
             <Route path="/students/:id" element={<StudentProfile />} />
-            {/* לוח שיעורים / תשלומים / דוחות / הגדרות ייכנסו ב-Phases הבאים */}
+            <Route path="/payments" element={<Payments />} />
+            {/* לוח שיעורים / דוחות / הגדרות ייכנסו ב-Phases הבאים */}
           </Route>
         </Routes>
       </AuthProvider>

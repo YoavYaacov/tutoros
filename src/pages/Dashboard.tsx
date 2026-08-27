@@ -1,17 +1,19 @@
 import { Link } from "react-router-dom";
 import { useTodayLessons, useUpcomingLessons } from "@/hooks/useLessons";
 import { useStudents } from "@/hooks/useStudents";
+import { useAllFamilyBalances } from "@/hooks/usePayments";
 import { LoadingBlock, ErrorBanner, toErrorMessage } from "@/components/shared/Feedback";
-import { formatTime, formatDate, statusLabel, statusColorClass } from "@/lib/format";
+import { formatTime, formatDate, formatCurrency, statusLabel, statusColorClass } from "@/lib/format";
 
 export default function Dashboard() {
   const { data: todayLessons, isLoading, error } = useTodayLessons();
   const { data: upcoming } = useUpcomingLessons(5);
   const { data: students } = useStudents();
+  const { data: familyBalances } = useAllFamilyBalances();
 
   const studentById = new Map((students ?? []).map((s) => [s.id, s]));
 
-  // KPI בסיסי — רק לשיעורי היום (KPI חודשי מלא מגיע עם Phase 3 הפיננסי)
+  // KPI בסיסי — רק לשיעורי היום (KPI פיננסי מוצג בנפרד למטה)
   const completedToday = (todayLessons ?? []).filter((l) => l.status === "completed").length;
   const scheduledToday = (todayLessons ?? []).filter((l) => l.status === "scheduled").length;
 
@@ -129,10 +131,29 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Placeholder — תשלומים פתוחים יתווספו ב-Phase 3 (פיננסים) */}
-      <div className="mt-8 rounded-card border border-dashed border-ink-100 bg-white p-6 text-center text-sm text-ink-400">
-        תשלומים פתוחים ו-KPI פיננסי חודשי יתווספו ב-Phase 3.
-      </div>
+      {(() => {
+        const balancesOwed = (familyBalances ?? []).filter((b) => b.balance > 0);
+        const totalOutstanding = balancesOwed.reduce((sum, b) => sum + b.balance, 0);
+        return (
+          <div className="mt-8 flex items-center justify-between rounded-card bg-white p-4 ring-1 ring-ink-100">
+            <div>
+              <p className="text-xs text-ink-400">יתרה פתוחה לגבייה</p>
+              <p className={`text-xl font-bold ${totalOutstanding ? "text-amber-600" : "text-ink-900"}`}>
+                {formatCurrency(totalOutstanding)}
+              </p>
+              {balancesOwed.length > 0 && (
+                <p className="text-xs text-ink-400">{balancesOwed.length} משפחות עם יתרה פתוחה</p>
+              )}
+            </div>
+            <Link
+              to="/payments"
+              className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              למסך תשלומים
+            </Link>
+          </div>
+        );
+      })()}
     </div>
   );
 }
