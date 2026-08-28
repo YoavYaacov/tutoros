@@ -1,7 +1,7 @@
 # TutorOS — Status
 
 עודכן לאחרונה: 28/08/2026
-Phase נוכחי: Phase 4 (Lesson Workspace + Whiteboard) — Stage A (הליבה) הושלם ונבדק E2E בדפדפן ✅ | Stage B (MathLive+PDF.js) בעבודה
+Phase נוכחי: Phase 4 (Lesson Workspace) הושלם ✅ — עודכן ל-iDroo (טאב נפרד) במקום Excalidraw מוטמע, ראו Decisions Log
 
 ## הושלם ✅
 
@@ -44,27 +44,29 @@ Phase נוכחי: Phase 4 (Lesson Workspace + Whiteboard) — Stage A (הליב�
 
 **אומת:** `npm run build` נקי (type-check + vite build), ונבדק בדפדפן בפועל מול נתוני "כהן" האמיתיים ב-Supabase — כולל שימוש אמיתי של המשתמש (3 תשלומים בסה"כ ₪1,060 על חיוב של ₪1,060 → יתרה ₪0, סטטוס 'paid'). כפתור היצירה הגלובלי נבדק גם הוא ("אין שיעורים חדשים שהתקיימו וטרם חויבו" כשאין מה ליצור). עריכת שיעור קיים נבדקה: לחיצה על שורת שיעור פותחת מודל עם הנתונים האמיתיים (תאריך/סטטוס/מחיר) מוכנים לעריכה.
 
-### Phase 4, Stage A — Lesson Workspace (הליבה)
-בלי migration — הכל מתאים לסכימה הקיימת. תלות חדשה: `@excalidraw/excalidraw` (טעינה עצלה, `React.lazy`, כדי לא לנפח את הבאנדל הראשי של שאר המסכים).
-- `src/types/database.ts` — נוסף `LessonBoard`/`LessonBoardInput`, ו-`LessonInput` קיבל `actual_start`/`actual_end`/`actual_duration`/`board_id`.
+### Phase 4 — Lesson Workspace
+בלי migration — הכל מתאים לסכימה הקיימת. **הלוח עצמו הוא iDroo בטאב נפרד, לא לוח מוטמע** (ראו Decisions Log — פותח מחדש ושונה תוך כדי הפיתוח; ראו גם `docs/MASTER.md` סעיף 3 לפירוט המלא כולל הסיבה הטכנית: iDroo שולח `X-Frame-Options: DENY` בפועל, לא ניתן להטמיע ב-iframe).
+- `src/types/database.ts` — `LessonInput` קיבל `actual_start`/`actual_end`/`actual_duration`/`board_id` (השדה האחרון לא בשימוש בפועל כרגע — נשאר לתאימות לסכימה). `LessonBoard`/`LessonBoardInput` הוסרו מהטיפוסים (לא בשימוש עוד; טבלת `lesson_boards` עצמה נשארת ב-DB, ראו למטה).
 - `src/lib/api/lessons.ts` — `getLesson(id)`, ו-`startLesson(id)` **אידמפוטנטי**: לא דורס `actual_start` אם כבר קיים (כדי לא "לאפס" זמן מדוד — היה פוגע באמינות משך השיעור המחויב).
-- `src/lib/api/lessonBoards.ts` (חדש) — CRUD ללוחות: `getLessonBoardByLessonId`, `createLessonBoard` (גם מעדכן `lessons.board_id`, המצביע הכפול בסכימה), `updateLessonBoardData`, `getPreviousBoardDataForStudent` (ל"המשך מהשיעור הקודם").
-- `src/hooks/useDebouncedCallback.ts` (חדש, כללי) — `{debounced, flush}`; `flush` נקרא ב-cleanup של unmount כדי לא לאבד שינוי אחרון שממתין ב-debounce.
+- `src/hooks/useDebouncedCallback.ts` (חדש, כללי) — `{debounced, flush}`; `flush` נקרא ב-cleanup של unmount כדי לא לאבד שינוי אחרון שממתין ב-debounce. משמש לשמירה האוטומטית של שדות השיעור בסייד פאנל.
 - `src/hooks/useLessons.ts` — נוספו `useLesson(id)`, `useStartLesson()`, ו-`useAutosaveLessonFields(id)` — **חריגה מכוונת מהקונבנציה**: משתמש ב-`setQueryData` ולא ב-`invalidateQueries` (כי זה יורה כל 2 שניות תוך כדי הקלדה, ו-refetch היה מתחרה בעריכה חיה).
-- `src/hooks/useLessonBoards.ts` (חדש) — אותו דפוס: `useAutosaveLessonBoard` הוא `setQueryData`-בלבד, `useCreateLessonBoard` (פעולה חד-פעמית) הוא invalidate רגיל.
-- `src/pages/LessonWorkspace.tsx` (חדש, route `/lesson/:lessonId`) — **בכוונה מחוץ ל-AppShell** (בלי סיידבר, מסך מלא): header (שם תלמיד, טיימר, אינדיקטור שמירה, "סיום שיעור"), Side Panel (שיעור קודם לקריאה + נושא/הערות/ש.בית לעריכה חיה עם autosave), ולוח Excalidraw. יצירת לוח: אם יש לוח קודם לתלמיד — שואל "לוח חדש / המשך מהשיעור הקודם"; אחרת יוצר לוח ריק בשקט.
-- `src/components/lessonWorkspace/` (חדש): `ExcalidrawBoard.tsx` (autosave עם debounce 2.5s דרך `serializeAsJSON`, כולל files/תמונות מוטמעות כ-base64 — **אין Storage bucket בפרויקט**, זו החלטה מכוונת ל-MVP), `BoardStartChoiceModal.tsx`, `LessonTimer.tsx` (שעון עצר פשוט, בלי התראת חריגה), `SaveIndicator.tsx`, `LessonSidePanel.tsx`, `EndLessonModal.tsx` (מחשב משך בפועל, ניתן לעריכה; לחיצה כפולה מוגנת ב-`disabled` בזמן שמירה).
+- `src/pages/LessonWorkspace.tsx` (חדש, route `/lesson/:lessonId`) — **בכוונה מחוץ ל-AppShell** (בלי סיידבר, מסך מלא): header (שם תלמיד, טיימר, אינדיקטור שמירה, "סיום שיעור"), Side Panel (שיעור קודם לקריאה + נושא/הערות/ש.בית לעריכה חיה עם autosave), ובמרכז כפתור "פתח לוח iDroo" שפותח `https://app.idroo.com/` בטאב חדש (כתובת קבועה כרגע בקוד — TODO להעביר להגדרות, כמו Zoom ב-Phase 5, אם יש חדר iDroo קבוע).
+- `src/components/lessonWorkspace/`: `LessonTimer.tsx` (שעון עצר פשוט, בלי התראת חריגה), `SaveIndicator.tsx`, `LessonSidePanel.tsx`, `EndLessonModal.tsx` (מחשב משך בפועל, ניתן לעריכה; לחיצה כפולה מוגנת ב-`disabled` בזמן שמירה).
 - `src/pages/StudentProfile.tsx` — "התחל שיעור" מופעל: בוחר אוטומטית את השיעור המתוכנן הקרוב ביותר, קורא ל-`startLesson`, מנווט ל-`/lesson/:id`.
 
-**אומת E2E בדפדפן על שיעור אמיתי (לא רק seed):** נוצר שיעור חדש → "התחל שיעור" → הלוח נטען (Excalidraw מלא, כל הכלים) → ציור נשמר אוטומטית ל-DB (`lesson_boards.board_data`) → עריכת "נושא" בסייד פאנל נשמרה אוטומטית ל-`lessons.topic` → "סיום שיעור" עדכן `status='completed'`, `actual_end`, `actual_duration=3` → חזרה לכרטיס תלמיד הציגה את זה נכון → **"צור חיובים משיעורים שלא חויבו" במסך תשלומים אסף את השיעור אוטומטית ויצר חיוב חדש** (יתרת משפחת כהן עלתה מ-₪0 ל-₪160, "אוגוסט 2026") — מוודא שהאינטגרציה בין Phase 3 ל-Phase 4 עובדת מקצה לקצה.
+**אומת E2E בדפדפן על שיעור אמיתי (לא רק seed):** "התחל שיעור" → עריכת "נושא" בסייד פאנל נשמרה אוטומטית ל-`lessons.topic` → "סיום שיעור" עדכן `status='completed'`, `actual_end`, `actual_duration` → חזרה לכרטיס תלמיד הציגה את זה נכון → **"צור חיובים משיעורים שלא חויבו" במסך תשלומים אסף את השיעור אוטומטית ויצר חיוב חדש** (יתרת משפחת כהן עלתה מ-₪0 ל-₪160, "אוגוסט 2026") — מוודא שהאינטגרציה בין Phase 3 ל-Phase 4 עובדת מקצה לקצה. הבדיקה בוצעה במקור עם Excalidraw מוטמע (עבד תקין, כולל autosave), לפני המעבר ל-iDroo — הלוגיקה הזו (timer/side-panel/end-lesson) לא השתנתה במעבר, רק הוחלף מרכיב הציור עצמו.
 
-**באג שנמצא ותוקן תוך כדי בדיקה:** `EndLessonModal` נשאר mounted ברקע (עם `open=false`) מרגע הכניסה ל-Workspace, אז `useState` עם ערך התחלתי (משך מחושב / נושא) קלט את הערכים **בזמן ה-mount המוקדם**, לא בזמן הפתיחה בפועל — תוקן עם `useEffect` שמאתחל מחדש בכל `open===true`, אותו דפוס בדיוק שכבר תוקן קודם ב-`PaymentFormModal`.
+**באג שנמצא ותוקן תוך כדי בדיקה (עדיין רלוונטי):** `EndLessonModal` נשאר mounted ברקע (עם `open=false`) מרגע הכניסה ל-Workspace, אז `useState` עם ערך התחלתי (משך מחושב / נושא) קלט את הערכים **בזמן ה-mount המוקדם**, לא בזמן הפתיחה בפועל — תוקן עם `useEffect` שמאתחל מחדש בכל `open===true`, אותו דפוס בדיוק שכבר תוקן קודם ב-`PaymentFormModal`.
+
+**הוסר במעבר ל-iDroo:** `@excalidraw/excalidraw`, `mathlive`, `pdfjs-dist` (תלויות npm), `ExcalidrawBoard.tsx`, `BoardStartChoiceModal.tsx`, כלי הנוסחה (`latexToImage.ts`, `insertImageIntoBoard.ts`, `MathFormulaTool.tsx`), `src/types/mathlive.d.ts`, `src/lib/api/lessonBoards.ts`, `src/hooks/useLessonBoards.ts`. טבלת `lesson_boards` ב-DB **נשארת קיימת אך לא בשימוש** (לא נמחקה — DDL הרסני נחסם ע"י הרשאות המערכת).
 
 ## הבא בתור ⏭
 1. מסך "יומן" (`/schedule`) — עדיין אין מסך מאחורי הלינק בתפריט. לא שובץ במפורש לאף Phase במסמך האב; צריך להחליט מתי לבנות (יומן שבועי/חודשי, לא רק Timeline יומי כמו בדשבורד).
 2. **פעולה ידנית שלך (חובה, לא ניתנת לביצוע מקוד):** ב-GitHub → הריפו → Settings → Pages → Build and deployment → Source → לבחור **"GitHub Actions"** (אם עדיין לא בוצע).
 3. `due_date` לחיובים לא מוגדר אוטומטית כרגע (נשאר null) — לשקול אם צריך ברירת מחדל לפני Phase 6 (Export/Analytics).
 4. עמודת `email` ב-`families`/`students` עדיין קיימת פיזית ב-DB (ראה החלטה למטה) — לשקול אם למחוק בפועל.
+5. כתובת iDroo קבועה בקוד (`https://app.idroo.com/`) — אם יש חדר קבוע שהמשתמש תמיד חוזר אליו, לעדכן לכתובת הספציפית (או להעביר להגדרות, ראו MASTER.md סעיף 3).
+6. טבלת `lesson_boards` (ו-`lessons.board_id`) לא בשימוש יותר — לשקול אם למחוק בפועל מה-DB (יחד עם `email`, סעיף 4).
 
 ## נדחה (Deferred) ⏸
 - Leaked Password Protection — לא זמין בטיר Free של Supabase
@@ -86,3 +88,4 @@ Phase נוכחי: Phase 4 (Lesson Workspace + Whiteboard) — Stage A (הליב�
 - 28/08/2026 — תלמיד חדש: שם המשפחה מתמלא אוטומטית לפי המשפחה שנבחרה (ניתן לעריכה ידנית) — לפי בקשת המשתמש
 - 28/08/2026 — פריט תפריט "לוח שיעורים" שונה ל"יומן" — לפי בקשת המשתמש (עדיין אין מסך מאחוריו)
 - 28/08/2026 — מחיר לשיעור בודד (price_snapshot) ניתן לעריכה ידנית בטופס השיעור, לא נעול אוטומטית למחיר הרגיל של התלמיד — לפי בקשת המשתמש (שיעור שהתארך/התקצר, או שיעור משותף עם תמחור פרטני שונה לכל תלמיד). כחלק מזה, שורות שיעור בכרטיס תלמיד הפכו ללחיצות ופותחות עריכה — זה גם נותן דרך ראשונה מה-UI לסמן שיעור כ"התקיים"
+- 28/08/2026 — **Phase 4 נבנה פעמיים באותו לילה.** קודם Excalidraw מוטמע + MathLive (לפי docs/MASTER.md המקורי) — נבנה במלואו, נבדק E2E בדפדפן, הועלה ל-main ועבד. אז המשתמש ביקש לעבור ל-iDroo כי הוא מכיר אותו וחושב שהוא טוב יותר. נבדק בפועל (curl) ש-iDroo שולח `X-Frame-Options: DENY` בכל תגובה מ-`app.idroo.com` — הטמעה ב-iframe לא אפשרית טכנית מהצד שלנו. הוצג למשתמש, ולבסוף הוחלט: כפתור/קישור "פתח לוח iDroo" שנפתח בטאב נפרד (לא מוטמע), במקום Excalidraw. קוד ה-Excalidraw/MathLive/PDF.js הוסר לגמרי (כולל תלויות ה-npm); `lesson_boards`/`lessons.board_id` נשארו ב-DB לא בשימוש. docs/MASTER.md עודכן (סעיף 3) לשקף את ההחלטה הסופית, עם ההיסטוריה של ההחלטה הקודמת מתועדת בתוכו לצורך הקשר

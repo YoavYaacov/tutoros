@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useLesson, useAutosaveLessonFields } from "@/hooks/useLessons";
+import { useLesson, useAutosaveLessonFields, useLessonsByStudent } from "@/hooks/useLessons";
 import { useStudent } from "@/hooks/useStudents";
-import { useLessonsByStudent } from "@/hooks/useLessons";
-import { useLessonBoard, usePreviousBoardData, useCreateLessonBoard } from "@/hooks/useLessonBoards";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
-import { ExcalidrawBoard } from "@/components/lessonWorkspace/ExcalidrawBoard";
-import { BoardStartChoiceModal } from "@/components/lessonWorkspace/BoardStartChoiceModal";
 import { LessonSidePanel } from "@/components/lessonWorkspace/LessonSidePanel";
 import { LessonTimer } from "@/components/lessonWorkspace/LessonTimer";
 import { SaveIndicator, type SaveStatus } from "@/components/lessonWorkspace/SaveIndicator";
 import { EndLessonModal } from "@/components/lessonWorkspace/EndLessonModal";
 import { LoadingBlock, ErrorBanner, toErrorMessage } from "@/components/shared/Feedback";
+
+// TODO: להעביר להגדרות כשמסך ההגדרות ייבנה (אותו דפוס מתוכנן ל-Zoom ב-Phase 5) —
+// כרגע קישור קבוע לדשבורד iDroo; אם יש לך חדר קבוע שאתה תמיד חוזר אליו, תגיד לי ונקבע אותו כאן ישירות.
+const IDROO_URL = "https://app.idroo.com/";
 
 export default function LessonWorkspace() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -20,44 +20,8 @@ export default function LessonWorkspace() {
   const { data: lesson, isLoading: lessonLoading, error: lessonError } = useLesson(lessonId);
   const { data: student } = useStudent(lesson?.student_id);
   const { data: allStudentLessons } = useLessonsByStudent(lesson?.student_id);
-  const { data: board } = useLessonBoard(lessonId);
-  const { data: previousBoardData } = usePreviousBoardData(lesson?.student_id, lessonId);
-  const createBoard = useCreateLessonBoard(lessonId as string);
 
-  const [showBoardChoice, setShowBoardChoice] = useState(false);
-  const [boardStatus, setBoardStatus] = useState<SaveStatus>("saved");
   const [endModalOpen, setEndModalOpen] = useState(false);
-  const boardInitHandledRef = useRef(false);
-
-  // אתחול לוח לשיעור: אם אין עדיין לוח, וכבר בדקנו אם יש לוח קודם — יוצרים לוח (ריק, או אחרי בחירת המשתמש)
-  useEffect(() => {
-    if (boardInitHandledRef.current) return;
-    if (!lesson || board === undefined || previousBoardData === undefined) return;
-    if (board) {
-      boardInitHandledRef.current = true;
-      return;
-    }
-    if (previousBoardData) {
-      setShowBoardChoice(true);
-    } else {
-      boardInitHandledRef.current = true;
-      createBoard.mutate({ studentId: lesson.student_id, boardData: {} });
-    }
-  }, [lesson, board, previousBoardData, createBoard]);
-
-  function chooseBlankBoard() {
-    if (!lesson) return;
-    boardInitHandledRef.current = true;
-    setShowBoardChoice(false);
-    createBoard.mutate({ studentId: lesson.student_id, boardData: {} });
-  }
-
-  function choosePreviousBoard() {
-    if (!lesson) return;
-    boardInitHandledRef.current = true;
-    setShowBoardChoice(false);
-    createBoard.mutate({ studentId: lesson.student_id, boardData: previousBoardData ?? {} });
-  }
 
   // שדות השיעור (נושא/הערות/ש.בית) — state מקומי שנטען פעם אחת מהשיעור, לא מסתנכרן מחדש בכל refetch
   const [topic, setTopic] = useState("");
@@ -133,7 +97,7 @@ export default function LessonWorkspace() {
 
         <div className="flex items-center gap-4">
           {lesson.actual_start && <LessonTimer startIso={lesson.actual_start} />}
-          <SaveIndicator status={boardStatus === "error" || fieldsStatus === "error" ? "error" : boardStatus} />
+          <SaveIndicator status={fieldsStatus} />
           <button
             onClick={() => setEndModalOpen(true)}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
@@ -155,20 +119,21 @@ export default function LessonWorkspace() {
           saveStatus={fieldsStatus}
         />
 
-        <main className="min-w-0 flex-1">
-          {board ? (
-            <ExcalidrawBoard boardId={board.id} initialData={board.board_data} onStatusChange={setBoardStatus} />
-          ) : (
-            <LoadingBlock label="מכין את הלוח..." />
-          )}
+        <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3">
+          <a
+            href={IDROO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg bg-brand-600 px-6 py-3 text-lg font-semibold text-white hover:bg-brand-700"
+          >
+            פתח לוח iDroo
+          </a>
+          <p className="max-w-xs text-center text-sm text-ink-400">
+            הלוח נפתח בטאב נפרד. כדי לחזור לכאן ולעדכן הערות/שיעורי בית או לסיים את השיעור — פשוט
+            תחליף טאב.
+          </p>
         </main>
       </div>
-
-      <BoardStartChoiceModal
-        open={showBoardChoice}
-        onChooseBlank={chooseBlankBoard}
-        onChoosePrevious={choosePreviousBoard}
-      />
 
       {lesson.actual_start && (
         <EndLessonModal

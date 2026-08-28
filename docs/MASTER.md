@@ -74,9 +74,7 @@ TutorOS היא עמדת העבודה היומית של מורה פרטי אחד.
 | Styling | Tailwind CSS + shadcn/ui | |
 | State/Data | TanStack Query + Supabase JS client | לא Redux — אין צורך |
 | Backend | Supabase (Postgres + Auth + RLS + Storage + Edge Functions) | Service role key **אף פעם** לא ב-client |
-| Whiteboard | Excalidraw (embedded) | לא לבנות מנוע ציור עצמי |
-| Formulas | **MathLive** (math-field) + KaTeX לרינדור | ראו סעיף 3 — זו החלטה חדשה וקריטית |
-| PDF | PDF.js | |
+| Whiteboard | **iDroo** (קישור חיצוני, נפתח בטאב נפרד) | ראו סעיף 3 — עודכן 28/08/2026, מחליף את ההחלטה הקודמת (Excalidraw מוטמע) |
 | Calendar | Google Calendar API | OAuth, Edge Function לטוקנים |
 | Files | Google Drive API + Google Picker | References בלבד, לא אחסון קבצים |
 | Charts | Recharts | |
@@ -86,20 +84,24 @@ TutorOS היא עמדת העבודה היומית של מורה פרטי אחד.
 
 ---
 
-## 3. פתרון הזנת נוסחאות (במקום LaTeX-only) — החלטה ארכיטקטונית
+## 3. הלוח (Whiteboard) — החלטה ארכיטקטונית
 
-**הבעיה שהוגדרה:** ב-iDroo יש חוויית הזנה נוחה של נוסחאות (בונים ויזואלית, לא מקלידים קוד), אבל אי אפשר להדביק שם תמונות — וזה חיסרון עבורך.
+**עודכן 28/08/2026 — מחליף החלטה קודמת בסעיף הזה.** ההחלטה הקודמת הייתה Excalidraw מוטמע + MathLive ככלי נוסחה (ראו הסטוריה למטה) — **זה נבנה בפועל ב-Phase 4, Stage A, עבד ונבדק E2E**, אבל המשתמש העדיף בסופו של דבר לחזור ל-iDroo (מכיר אותו, לדעתו הרבה יותר טוב). לפני המעבר נבדק בפועל: **iDroo חוסם הטמעה ב-iframe** (`X-Frame-Options: DENY` בכל תגובה מ-`app.idroo.com`, כולל דפי 404 — כלומר כנראה גורף ולא ניתן לעקיפה מהצד שלנו). לכן ההחלטה הסופית:
 
-**ההחלטה:** להשתמש בספריית **MathLive** (`mathlive` npm package, קומפוננטת `<math-field>`) במקום תיבת טקסט גולמית ל-LaTeX.
+**ההחלטה:** Lesson Workspace לא מטמיע לוח ציור בכלל. במקומו, כפתור/קישור "פתח לוח iDroo" (`target="_blank"`) פותח את iDroo בטאב נפרד. שאר ה-Workspace (טיימר, Side Panel עם מידע משיעור קודם ועריכה חיה עם autosave של נושא/הערות/ש.בית, "סיום שיעור") נשאר באפליקציה כרגיל.
 
-**למה זה פותר את הבעיה:**
-- המשתמש מקליד/בונה את הנוסחה עם מקלדת מתמטית וירטואלית (סימנים, שברים, חזקות, אינטגרלים) בדיוק כמו ב-iDroo — לא צריך לדעת תחביר LaTeX.
-- ניתן להקליד גם ASCII-math-ish קיצורים (למשל `x^2` הופך אוטומטית לחזקה מוצגת) — MathLive עושה auto-formatting תוך כדי הקלדה.
-- מאחורי הקלעים, הפלט הוא LaTeX תקני — כך שהמערכת עדיין תואמת לדרישה המקורית ולתצוגה עם KaTeX על הלוח (Excalidraw), בלי לשנות את שאר הארכיטקטורה.
-- זה widget עצמאי (Web Component) — לא תלוי בשאר קוד ה-Whiteboard, כך שאם הוא נכשל הוא לא מפיל את הלוח (עומד בדרישת Error Handling בסעיף 9).
-- והבעיה של "אי אפשר להדביק תמונה" נפתרת כי זה כלי נפרד מה-Whiteboard: הנוסחה נבנית ב-MathLive, ונוספת כאובייקט (טקסט/SVG מרונדר) ללוח של Excalidraw — ותמונות/PDF ממשיכות להתווסף ללוח דרך כלי ה-Drive/PDF הנפרד (סעיף 6), לא דרך אותו modal.
+**השלכות על מה שכבר נבנה:**
+- `Excalidraw`, `mathlive`, `pdfjs-dist` הוסרו מהתלויות — הקוד שהשתמש בהם (`ExcalidrawBoard`, `BoardStartChoiceModal`, כלי הנוסחה) הוסר.
+- טבלת `lesson_boards` (וה-column `lessons.board_id`) **נשארים קיימים ב-DB אבל לא בשימוש** — לא הוסרו כי מחיקת DDL הרסני נחסמת ע"י הרשאות המערכת ודורשת אישור מפורש נוסף. אם ירצה המשתמש, אפשר למחוק בעתיד.
+- כתובת ה-iDroo כרגע קבועה בקוד (`https://app.idroo.com/`) — מיועדת לעבור להגדרות (אותו דפוס שמתוכנן ל-Zoom, ראו Phase 5) אם למשתמש יש חדר iDroo קבוע שהוא תמיד חוזר אליו.
+- כלי נוסחה (MathLive) ו-PDF.js **ירדו מהיקף Phase 4** — אם ל-iDroo יש כלי נוסחה/תמונה משלו זה כבר מכוסה שם; לא נבנה כלי מקביל באפליקציה.
 
-**נקודה לאימות בזמן המימוש (Phase 5):** לוודא בתיעוד העדכני של MathLive את שיטת הייצוא הנכונה ל-SVG/PNG לצורך הטמעה כאלמנט ב-Excalidraw (ה-API עשוי להשתנות בין גרסאות).
+<details>
+<summary>היסטוריה: ההחלטה המקורית (MathLive על גבי Excalidraw, לפני 28/08/2026)</summary>
+
+הבעיה שהוגדרה במקור: ב-iDroo יש חוויית הזנה נוחה של נוסחאות (בונים ויזואלית, לא מקלידים קוד), אבל אי אפשר להדביק שם תמונות. ההחלטה אז הייתה שימוש בספריית MathLive (`mathlive` npm package, קומפוננטת `<math-field>`) כדי לקבל הזנה ויזואלית בלי התלות ב-iDroo, ולפתור את בעיית התמונות ע"י כלי נפרד מה-Whiteboard. זה נבנה ועבד, אבל הוחלף בהחלטה למעלה.
+
+</details>
 
 ---
 
@@ -131,7 +133,7 @@ Student (1) ──< Topic/StudentProgress (P1)
 
 כפתור "התחל שיעור" קבוע וברור בכל מסך רלוונטי.
 
-מסכים עיקריים: Dashboard יומי+פיננסי, Student Profile, Family Profile, **Lesson Workspace** (המסך הקריטי — Header + Excalidraw + Side Panel נשלף), מסך תשלומים (Family View כברירת מחדל), הגדרות.
+מסכים עיקריים: Dashboard יומי+פיננסי, Student Profile, Family Profile, **Lesson Workspace** (המסך הקריטי — Header + כפתור "פתח לוח iDroo" בטאב נפרד + Side Panel נשלף; ראו סעיף 3), מסך תשלומים (Family View כברירת מחדל), הגדרות.
 
 ---
 
@@ -139,8 +141,8 @@ Student (1) ──< Topic/StudentProgress (P1)
 
 ```
 Dashboard → בחירת תלמיד/שיעור היום → "התחל שיעור"
-   → Lesson Workspace נפתח עם: מידע משיעור קודם, ש.בית קודם, אפשרות "המשך לוח קודם", Zoom, Drive
-   → עבודה על הלוח (כולל כלי נוסחה MathLive, PDF/תמונה מ-Drive)
+   → Lesson Workspace נפתח עם: מידע משיעור קודם, ש.בית קודם, כפתור "פתח לוח iDroo" (טאב נפרד), Zoom, Drive
+   → עבודה על הלוח ב-iDroo (בטאב נפרד) + עדכון נושא/הערות/ש.בית באפליקציה (autosave)
    → "סיום שיעור" → Modal קצר (מלא-אוטומטית ככל האפשר) → שמור + צור חיוב
    → "קבע שיעור הבא" → Modal → יוצר Lesson + Calendar Event (אחד בלבד, calendar_event_id נשמר)
    → Dashboard מתעדכן
@@ -164,8 +166,8 @@ Families CRUD, Students CRUD, Pricing Agreements (עם היסטוריה), Lesson
 ### Phase 3 — פיננסים
 Charges, ChargeItems, Payments, PaymentAllocations, חישוב יתרה משפחתית, "סמן תשלום" Modal, Dashboard פיננסי בסיסי. **בסוף Phase זה המערכת חייבת לענות נכון על "מי חייב לי כסף וכמה".**
 
-### Phase 4 — Lesson Workspace + Whiteboard
-Excalidraw embed, Auto-save (עם אינדיקציית שמירה ברורה), "לוח חדש / המשך / שכפול", Timer, Side Panel, כלי MathLive (סעיף 3), PDF.js + בחירת עמוד, הוספת תמונה/עמוד ללוח.
+### Phase 4 — Lesson Workspace
+כפתור "התחל שיעור" (קובע actual_start, אידמפוטנטי), Timer, Side Panel (מידע משיעור קודם + עריכה חיה עם auto-save של נושא/הערות/ש.בית), כפתור "פתח לוח iDroo" (טאב נפרד — ראו סעיף 3), "סיום שיעור" (Modal, קובע status/actual_end/actual_duration).
 
 ### Phase 5 — Google + Zoom
 Google OAuth (Edge Function לטוקנים), Drive Picker, Default Zoom URL בהגדרות + כפתור "פתח Zoom", Calendar sync (יצירה/עריכה/ביטול, מניעת כפילויות), "קבע שיעור הבא" מלא.
@@ -223,9 +225,7 @@ UI עובד • DB עובד • Validation • Loading state • Error handling 
 
 **כספים (משפחת כהן):** נועם 160₪×4=640, יעל 140₪×3=420, סה"כ 1,060₪ → תשלום 800₪ → יתרה 260₪ → תשלום 260₪ → יתרה 0₪ → שינוי מחיר נועם ל-170₪ לא משנה שיעורים קודמים.
 
-**שיעור:** Zoom נפתח, Whiteboard עובד, שמירה/טעינה של אותו לוח, PDF מ-Drive נגיש בקלות, סיום שיעור יוצר Lesson+Calendar Event **אחד בלבד** כל אחד.
-
-**נוסחה:** פתיחת כלי MathLive, בניית נוסחה ללא הקלדת LaTeX ידני, הוספתה ללוח, שמירתה עם ה-board.
+**שיעור:** Zoom נפתח, לוח iDroo נפתח בטאב נפרד, סיום שיעור יוצר Lesson+Calendar Event **אחד בלבד** כל אחד.
 
 ---
 
